@@ -3,12 +3,6 @@
         <h1>Daftar Buku</h1>
         <p>Kelola koleksi buku perpustakaan kampus melalui halaman ini.</p>
 
-        @if (session('success'))
-            <div class="alert alert-success">
-                {{ session('success') }}
-            </div>
-        @endif
-
         {{-- Kartu statistik (DB::table) --}}
         <div style="display:flex; gap:12px; flex-wrap:wrap; margin:16px 0;">
             <div style="flex:1; min-width:160px; padding:14px; border:1px solid #e5e0f5; border-radius:8px; background:#f7f3ff;">

@@ -35,6 +35,17 @@
             font-weight: bold;
         }
 
+        .nav-logout {
+            background: none;
+            border: none;
+            color: white;
+            font-weight: bold;
+            font-size: inherit;
+            font-family: inherit;
+            cursor: pointer;
+            padding: 0;
+        }
+
         .brand {
             font-size: 21px;
         }
@@ -137,12 +148,14 @@
             margin-bottom: 18px;
         }
 
-        .success {
+        .success,
+        .alert-success {
             background: #dcfce7;
             color: #166534;
         }
 
-        .danger {
+        .danger,
+        .alert-danger {
             background: #fee2e2;
             color: #991b1b;
         }
@@ -190,6 +203,17 @@
             <a href="{{ route('buku.index') }}">Data Buku</a>
             <a href="{{ route('peminjaman.index') }}">Peminjaman</a>
             <a href="{{ route('kategori.index') }}">Kategori</a>
+
+            @auth
+                <form method="POST" action="{{ route('logout') }}" style="display:inline;">
+                    @csrf
+                    <button type="submit" class="nav-logout">
+                        Logout ({{ auth()->user()->name }})
+                    </button>
+                </form>
+            @else
+                <a href="{{ route('login') }}">Login</a>
+            @endauth
         </div>
     </nav>
 
