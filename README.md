@@ -1,289 +1,199 @@
+# SIPUS-Del Tahap 2
+## Sistem Informasi Perpustakaan Kampus: Transaksi, Query Builder, Session, dan Autentikasi
 
-# SIPUS-Del
-## Sistem Informasi Perpustakaan Kampus
+SIPUS-Del adalah aplikasi web pengelolaan perpustakaan kampus berbasis Laravel dan MySQL. Tugas Minggu 6 (branch `week6-db-session`) melanjutkan proyek Minggu 5 dengan:
 
-SIPUS-Del merupakan aplikasi berbasis web untuk membantu pengelolaan koleksi buku dan kategori buku pada perpustakaan kampus. Aplikasi ini dikembangkan menggunakan Laravel dan SQLite dengan pendekatan Model-View-Controller (MVC).
+1. Tabel `peminjamans` dan relasi Eloquent ke `bukus`.
+2. Transaksi ACID peminjaman dan pengembalian dengan `DB::transaction()` dan `lockForUpdate()`.
+3. Rekapitulasi dengan Query Builder, `withCount`, dan filter dinamis.
+4. Session, Cookie, dan autentikasi pustakawan.
+5. Seeder akun uji dan data uji transaksi.
 
-Aplikasi menyediakan pengelolaan data buku dan kategori, validasi input, relasi antar tabel, serta tampilan yang konsisten menggunakan Blade.
+## 1. Teknologi
 
-## 1. Fitur Aplikasi
+- PHP, Laravel 13
+- MySQL (Laragon) dan HeidiSQL
+- Blade, HTML, CSS
+- Eloquent ORM dan Query Builder
+- Composer, Git, GitHub
 
-### Pengelolaan Buku
-- Menampilkan daftar buku dengan pagination.
-- Menambahkan buku baru.
-- Melihat detail buku.
-- Mengubah informasi buku.
-- Menghapus buku.
-- Menampilkan kategori dari setiap buku.
+Catatan: Penugasan menyebut Laravel 11, namun pada kelas praktikum telah disepakati penggunaan Laravel 13.
 
-### Pengelolaan Kategori
-- Menampilkan daftar kategori.
-- Menambahkan kategori baru.
-- Melihat detail kategori beserta buku yang terkait.
-- Mengubah informasi kategori.
-- Menghapus kategori yang tidak sedang digunakan oleh buku.
+## 2. Akun Uji
 
-### Fitur Pendukung
-- Validasi data pada sisi server.
-- Pencegahan ISBN dan kode kategori duplikat.
-- Notifikasi setelah operasi berhasil atau gagal.
-- Tampilan pesan ketika data belum tersedia.
-- Eloquent ORM untuk pengelolaan relasi.
-- Eager loading untuk mengurangi query berulang saat mengambil data buku dan kategorinya.
+| Email | Password |
+|---|---|
+| pustakawan@del.ac.id | password123 |
 
-## 2. Teknologi yang Digunakan
+Akun ini hanya untuk pengujian. Semua rute mutasi dan halaman peminjaman memerlukan login.
 
-- PHP
-- Laravel 13
-- SQLite
-- Blade Template
-- HTML dan CSS
-- Eloquent ORM
-- Composer
-- Git dan GitHub
+## 3. Cara Menjalankan
 
-Catatan: Versi framework yang digunakan pada proyek ini adalah Laravel 13. Pastikan versi ini sesuai dengan ketentuan tugas. Dipenugasan memang ditentukan menggunakan Laravel 11, namun pada saat kelas praktikum sudah disepakati menggunakan Laravel 13.
-
-## 3. Struktur Proyek
-
-```text
-SIPUS-Del/
-├── app/
-│   ├── Http/Controllers/
-│   │   ├── BukuController.php
-│   │   └── KategoriController.php
-│   └── Models/
-│       ├── Buku.php
-│       └── Kategori.php
-├── database/
-│   ├── factories/
-│   │   └── BukuFactory.php
-│   ├── migrations/
-│   └── seeders/
-│       ├── BukuSeeder.php
-│       ├── KategoriSeeder.php
-│       └── DatabaseSeeder.php
-├── resources/
-│   └── views/
-│       ├── buku/
-│       ├── kategori/
-│       └── components/
-│           └── layout.blade.php
-├── routes/
-│   └── web.php
-├── tests/
-├── .env.example
-├── composer.json
-└── README.md
+1. Clone dan pindah branch:
+```bash
+   git clone https://github.com/SwastiSihombing/ppw-2026-week5-12S24030.git
+   cd ppw-2026-week5-12S24030
+   git checkout week6-db-session
 ```
+2. Instal dependensi: `composer install`
+3. Salin environment: `Copy-Item .env.example .env`, lalu atur database (contoh Laragon):
+```dotenv
+   DB_CONNECTION=mysql
+   DB_HOST=127.0.0.1
+   DB_PORT=3306
+   DB_DATABASE=sipus_del
+   DB_USERNAME=root
+   DB_PASSWORD=
+```
+4. Jalankan MySQL (Start All di Laragon). Database `sipus_del` bisa dibuat lewat HeidiSQL atau otomatis saat `php artisan migrate` menawarkannya.
+5. Buat key: `php artisan key:generate`
+6. Migrasi dan seeder: `php artisan migrate --seed`
+7. Jalankan: `php artisan serve`, lalu buka http://127.0.0.1:8000
 
-## 4. Desain Database
+Seeder menyiapkan kategori dan buku contoh, akun pustakawan, *Buku Uji Stok Habis* (stok 0), *Buku Uji Stok Satu* (stok 1), serta sampel transaksi `PJM-SEED0001`.
 
-Aplikasi menggunakan database SQLite dengan dua tabel utama, yaitu `kategoris` dan `bukus`.
+## 4. Desain Database dan ERD
+
+Tiga tabel utama: `kategoris`, `bukus`, dan `peminjamans`.
 
 ### Tabel `kategoris`
-
-| Kolom | Tipe data | Keterangan |
+| Kolom | Tipe | Keterangan |
 |---|---|---|
 | id | Integer | Primary key |
-| kode_kategori | String, maksimal 20 karakter | Kode unik kategori |
-| nama_kategori | String, maksimal 100 karakter | Nama kategori |
-| deskripsi | Text, nullable | Deskripsi kategori |
-| created_at | Timestamp | Waktu pembuatan |
-| updated_at | Timestamp | Waktu pembaruan |
+| kode_kategori | String(20) | Unik |
+| nama_kategori | String(100) | Nama kategori |
+| deskripsi | Text, nullable | Deskripsi |
+| timestamps | Timestamp | created_at, updated_at |
 
 ### Tabel `bukus`
-
-| Kolom | Tipe data | Keterangan |
+| Kolom | Tipe | Keterangan |
 |---|---|---|
 | id | Integer | Primary key |
-| isbn | String, maksimal 20 karakter | ISBN unik buku |
-| judul | String, maksimal 200 karakter | Judul buku |
-| penulis | String, maksimal 150 karakter | Nama penulis |
-| penerbit | String, maksimal 150 karakter | Nama penerbit |
+| isbn | String(20) | Unik |
+| judul | String(200) | Judul buku |
+| penulis | String(150) | Penulis |
+| penerbit | String(150) | Penerbit |
 | tahun_terbit | Unsigned small integer | Tahun terbit |
-| stok | Unsigned integer | Jumlah stok, default 0 |
-| sinopsis | Text, nullable | Ringkasan buku |
+| stok | Unsigned integer | Default 0 |
+| sinopsis | Text, nullable | Ringkasan |
 | kategori_id | Foreign key | Mengacu ke `kategoris.id` |
-| created_at | Timestamp | Waktu pembuatan |
-| updated_at | Timestamp | Waktu pembaruan |
+| timestamps | Timestamp | created_at, updated_at |
 
-### Relasi Antar Tabel
+### Tabel `peminjamans`
+| Kolom | Tipe | Keterangan |
+|---|---|---|
+| id | Integer | Primary key |
+| kode_pinjam | String | Unik |
+| buku_id | Foreign key | Mengacu ke `bukus.id`, `cascadeOnDelete` |
+| nim_peminjam | String(20) | NIM peminjam |
+| nama_peminjam | String(150) | Nama peminjam |
+| tanggal_pinjam | Date | Tanggal pinjam |
+| tanggal_jatuh_tempo | Date | Batas pengembalian |
+| tanggal_kembali | Date, nullable | Tanggal kembali |
+| status | String | `dipinjam` atau `dikembalikan` (default `dipinjam`) |
+| timestamps | Timestamp | created_at, updated_at |
 
-Relasi yang digunakan adalah one-to-many:
+### Relasi
+- `Kategori` hasMany `Buku`; `Buku` belongsTo `Kategori`.
+- `Buku` hasMany `Peminjaman`; `Peminjaman` belongsTo `Buku`.
+- `peminjamans.buku_id` memakai `ON DELETE CASCADE`: riwayat peminjaman ikut terhapus saat bukunya dihapus.
 
-- Satu kategori dapat memiliki banyak buku.
-- Satu buku terhubung dengan satu kategori.
-- Kolom `bukus.kategori_id` menjadi foreign key yang mengacu pada `kategoris.id`.
-- Model `Kategori` menggunakan relasi `hasMany`.
-- Model `Buku` menggunakan relasi `belongsTo`.
+### ERD
+![ERD SIPUS-Del](docs/screenshoots/week6-erd.png)
 
-Kategori yang masih memiliki buku tidak dapat dihapus melalui aplikasi.
+### Bukti Foreign Key `cascadeOnDelete`
+![Foreign key peminjamans](docs/screenshoots/week6-foreign-key.png)
 
-## 5. Persyaratan Sistem
+## 5. Transaksi ACID dan Concurrency Locking
 
-Sebelum menjalankan aplikasi, pastikan perangkat telah memiliki:
+Peminjaman dan pengembalian dibungkus `DB::transaction()` pada `PeminjamanController`.
 
-- PHP dengan versi yang memenuhi persyaratan Laravel 13.
-- Composer.
-- SQLite.
-- Git jika ingin mengambil kode dari GitHub.
+**Peminjaman (`store`)**
+1. Baris buku dikunci dengan `Buku::whereKey($id)->lockForUpdate()->firstOrFail()`. Permintaan lain ke buku yang sama menunggu sampai transaksi selesai, sehingga stok tidak bisa minus akibat peminjaman bersamaan.
+2. Jika `stok <= 0`, `ValidationException` dilempar dan transaksi di-rollback.
+3. Jika NIM yang sama masih meminjam buku yang sama (status `dipinjam`), peminjaman ditolak.
+4. Jika lolos, stok dikurangi dengan `decrement('stok')` dan data peminjaman dibuat.
+5. `QueryException` ditangkap dan dicatat dengan `Log::error()`.
 
-## 6. Instalasi dan Cara Menjalankan
+**Pengembalian (`kembalikan`)**
+1. Baris peminjaman dikunci dengan `lockForUpdate()`.
+2. Jika status sudah `dikembalikan`, proses ditolak.
+3. Stok ditambah dengan `increment('stok')`, status menjadi `dikembalikan`, dan `tanggal_kembali` diisi.
 
-### A. Clone Repository
+### Bukti Pengujian
 
-```bash
-git clone https://github.com/SwastiSihombing/SIPUS-Del.git
-cd SIPUS-Del
-```
+**Peminjaman berhasil (stok 1 menjadi 0)**
 
-### B. Instal Dependensi
+![Peminjaman berhasil](docs/screenshoots/week6-pinjam-berhasil.png)
 
-```bash
-composer install
-```
+**Penolakan saat stok 0 (rollback, stok tidak minus)**
 
-### C. Siapkan File Environment
+![Penolakan stok 0](docs/screenshoots/week6-tolak-stok-0.png)
 
-Pada Windows PowerShell:
+**Pengembalian buku (status Dikembalikan, stok bertambah)**
 
-```powershell
-Copy-Item .env.example .env
-```
+![Pengembalian buku](docs/screenshoots/week6-kembalikan.png)
 
-Pastikan konfigurasi database pada `.env` menggunakan SQLite:
+## 6. Query Builder, withCount, dan Filter Dinamis
 
-```dotenv
-DB_CONNECTION=sqlite
-```
-
-### D. Siapkan Database SQLite
-
-Pastikan file berikut tersedia:
-
-```text
-database/database.sqlite
-```
-
-Jika belum ada, buat file SQLite kosong tersebut dari terminal PowerShell:
-
-```powershell
-New-Item database/database.sqlite -ItemType File
-```
-
-Jika file sudah ada, jangan jalankan perintah pembuatan file tersebut lagi.
-
-### E. Buat Application Key
-
-```bash
-php artisan key:generate
-```
-
-### F. Jalankan Migrasi dan Seeder
-
-```bash
-php artisan migrate --seed
-```
-
-Perintah ini membuat tabel yang didefinisikan dalam migrasi dan menjalankan seeder yang terdaftar di `DatabaseSeeder`.
-
-Seeder proyek menyiapkan lima kategori awal dan menambah data buku contoh hingga mencapai target minimal 20 buku berdasarkan logika seeder yang digunakan.
-
-Jangan gunakan `migrate:fresh` pada database yang berisi data penting karena perintah tersebut menghapus tabel sebelum membuat ulang.
-
-### G. Jalankan Server
-
-```bash
-php artisan serve
-```
-
-Buka alamat berikut di browser:
-
-http://127.0.0.1:8000
-
-## 7. Validasi dan Keamanan
-
-Aplikasi menerapkan beberapa mekanisme validasi dan keamanan:
-
-- ISBN buku harus unik.
-- Kode kategori harus unik.
-- Judul, penulis, penerbit, tahun terbit, stok, dan kategori divalidasi sesuai aturan pada controller.
-- Kategori yang dipilih harus tersedia di database.
-- Form menggunakan token CSRF melalui direktif `@csrf`.
-- Form pembaruan dan penghapusan menggunakan metode HTTP yang sesuai melalui `@method`.
-- Model menggunakan `$fillable` untuk membatasi atribut yang dapat diisi melalui mass assignment.
-- Blade menggunakan escaping bawaan pada ekspresi `{{ }}` untuk menampilkan data.
-- Penghapusan kategori ditolak jika kategori masih memiliki buku.
-
-## 8. Pengujian Aplikasi
-
-Pengujian dilakukan untuk memeriksa fungsi dan validasi aplikasi.
-
-### Pengujian Fungsional
-- Menampilkan daftar buku dan kategori.
-- Menambahkan buku dan kategori.
-- Melihat detail buku dan kategori.
-- Mengubah data buku dan kategori.
-- Menghapus buku.
-- Menghapus kategori yang tidak sedang digunakan.
-- Menolak penghapusan kategori yang masih memiliki buku.
-
-### Pengujian Validasi
-- ISBN duplikat ditolak.
-- Kode kategori duplikat ditolak.
-- Kolom wajib yang kosong ditolak.
-- Stok negatif ditolak.
-- Kategori yang tidak tersedia ditolak.
-
-### Menjalankan Tes Otomatis
-
-```bash
-php artisan test
-```
-
-Hasil pengujian harus diperbarui berdasarkan hasil aktual ketika perintah dijalankan. Jangan menyatakan seluruh tes lulus sebelum semua tes terkait berhasil.
-
-## 9. Audit SQL dan Optimasi Query
-
-Pengambilan daftar buku menggunakan Eloquent eager loading:
+Katalog pada `BukuController@index`:
 
 ```php
-Buku::with('kategori')->latest()->paginate(10);
+Buku::with('kategori')
+    ->withCount('peminjamans')
+    ->when($search, fn ($q, $s) => /* judul / penulis / ISBN */)
+    ->when($kategoriId, fn ($q, $id) => $q->where('kategori_id', $id))
+    ->latest()
+    ->paginate(10)
+    ->withQueryString();
 ```
 
-Eager loading digunakan agar data kategori dimuat secara efisien ketika daftar buku ditampilkan. Pendekatan ini membantu menghindari pola N+1 query, yaitu pengambilan data relasi secara berulang untuk setiap buku.
+- `with('kategori')` dan `withCount('peminjamans')` mencegah N+1 query.
+- `when()` menerapkan filter hanya jika parameter diisi.
+- `withQueryString()` menjaga kata kunci dan kategori saat berpindah halaman.
+- Kartu statistik memakai `DB::table()`: `count()` total judul, `sum('stok')` total stok tersedia, serta `count()` pada `peminjamans` berstatus `dipinjam` dan `dikembalikan`.
 
-Audit query dilakukan dengan Laravel Tinker menggunakan query log untuk memeriksa query yang dieksekusi. Jumlah dan isi query yang dilaporkan harus sesuai dengan hasil pemeriksaan aktual.
+![Dashboard statistik](docs/screenshoots/week6-dashboard.png)
 
-## 10. Screenshot Aplikasi
+![Pencarian dan filter](docs/screenshoots/week6-pencarian.png)
 
-1. ![Halaman daftar buku](<docs/screenshoots/Halaman daftar buku..png>)
+## 7. Session, Cookie, dan Autentikasi
 
-2. ![Form tambah buku](<docs/screenshoots/Form tambah buku..png>)
+`AuthController` menangani login dan logout pustakawan:
 
-3. ![Halaman detail buku](<docs/screenshoots/Halaman detail buku.png>)
+- Login: `Auth::attempt()`, lalu `$request->session()->regenerate()` (mencegah session fixation) dan `Cookie::queue('last_login', ...)`.
+- Logout: `Auth::logout()`, `session()->invalidate()`, dan `regenerateToken()`.
+- Middleware `guest` pada halaman login; middleware `auth` pada seluruh rute mutasi (create, store, edit, update, destroy untuk buku dan kategori, serta peminjaman dan pengembalian). Katalog dan detail buku bersifat publik.
+- State pengguna: Session menyimpan `riwayat_pencarian` dan `peminjaman_terakhir`; Cookie `last_search` dibuat dengan `Cookie::queue()`.
 
-4. ![Halaman edit buku](<docs/screenshoots/Halaman edit buku.png>)
+![Redirect ke login](docs/screenshoots/week6-redirect-login.png)
 
-5. ![Halaman daftar kategori](<docs/screenshoots/Halaman daftar kategori.png>)
+### Audit Cookie pada Browser DevTools
 
-6. ![Form tambah kategori](<docs/screenshoots/Form tambah kategori.png>)
+Cookie `laravel-session` dan `last_login` bertanda **HttpOnly** sehingga tidak dapat dibaca JavaScript.
 
-7. ![pesan validasi ketika input tidak sesuai](<docs/screenshoots/Contoh pesan validasi ketika input tidak sesuai.png>)
+![Audit cookie HttpOnly](docs/screenshoots/week6-cookie-httponly.png)
 
-8. ![Contoh penolakan penghapusan kategori yang masih memiliki buku](<docs/screenshoots/Contoh penolakan penghapusan kategori yang masih memiliki buku.png>)
+## 8. Pengujian
 
+- Mengakses `/peminjaman` tanpa login diarahkan ke halaman login.
+- Login dengan akun uji berhasil, session diregenerasi.
+- Peminjaman buku berstok > 0 berhasil dan stok berkurang.
+- Peminjaman buku berstok 0 ditolak, transaksi di-rollback, stok tidak minus.
+- NIM yang sama meminjam buku yang sama sebelum dikembalikan ditolak.
+- Pengembalian menambah stok dan mengubah status menjadi `dikembalikan`; pengembalian ganda ditolak.
+- Pencarian dan filter kategori menyaring katalog, kata kunci tetap terbawa saat paginasi.
+- Logout menginvalidasi session.
 
-## 11. Repository dan Version Control
+## 9. Repository dan Version Control
 
-Proyek dikelola menggunakan Git dan diunggah ke GitHub.
+Repository: [ppw-2026-week5-12S24030](https://github.com/SwastiSihombing/ppw-2026-week5-12S24030), branch `week6-db-session`.
 
-Repository: [SIPUS-Del di GitHub](https://github.com/SwastiSihombing/SIPUS-Del.git)
+Commit mengikuti Conventional Commits: `feat(migration)`, `feat(transaction)`, `feat(query-builder)`, `feat(auth-session)`.
 
-File `.env` lokal tidak boleh diunggah karena dapat berisi konfigurasi sensitif. Gunakan `.env.example` sebagai contoh konfigurasi lingkungan.
+File `.env` dan folder `vendor/` tidak diunggah ke GitHub. Gunakan `.env.example` sebagai contoh konfigurasi.
 
-## 12. Identitas Pengembang
+## 10. Identitas Pengembang
 
 - Nama: Swasti Maristella Sihombing
 - NIM: 12S24030
