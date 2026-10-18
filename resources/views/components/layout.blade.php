@@ -188,6 +188,7 @@
 
         <div>
             <a href="{{ route('buku.index') }}">Data Buku</a>
+            <a href="{{ route('peminjaman.index') }}">Peminjaman</a>
             <a href="{{ route('kategori.index') }}">Kategori</a>
         </div>
     </nav>

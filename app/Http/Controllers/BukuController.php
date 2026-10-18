@@ -5,17 +5,54 @@ namespace App\Http\Controllers;
 use App\Models\Buku;
 use App\Models\Kategori;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cookie;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class BukuController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $buku = Buku::with('kategori')
-            ->latest()
-            ->paginate(10);
+        $search = $request->query('search');
+        $kategoriId = $request->query('kategori_id');
 
-        return view('buku.index', compact('buku'));
+        $buku = Buku::with('kategori')
+            ->withCount('peminjamans')
+            ->when($search, function ($query, $search) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('judul', 'like', "%{$search}%")
+                        ->orWhere('penulis', 'like', "%{$search}%")
+                        ->orWhere('isbn', 'like', "%{$search}%");
+                });
+            })
+            ->when($kategoriId, fn ($query, $id) => $query->where('kategori_id', $id))
+            ->latest()
+            ->paginate(10)
+            ->withQueryString();
+
+        $stats = [
+            'total_judul'        => DB::table('bukus')->count(),
+            'total_stok'         => DB::table('bukus')->sum('stok'),
+            'sedang_dipinjam'    => DB::table('peminjamans')->where('status', 'dipinjam')->count(),
+            'total_dikembalikan' => DB::table('peminjamans')->where('status', 'dikembalikan')->count(),
+        ];
+
+        // State pengguna di Session dan Cookie (poin 4)
+        if ($search) {
+            $riwayat = collect(session('riwayat_pencarian', []))
+                ->prepend($search)
+                ->unique()
+                ->take(5)
+                ->values()
+                ->all();
+
+            session()->put('riwayat_pencarian', $riwayat);
+            Cookie::queue('last_search', $search, 60);
+        }
+
+        $kategori = Kategori::orderBy('nama_kategori')->get();
+
+        return view('buku.index', compact('buku', 'stats', 'kategori'));
     }
 
     public function create()
