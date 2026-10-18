@@ -13,3 +13,5 @@ Route::resource('buku', BukuController::class);
 Route::resource('kategori', KategoriController::class);
 Route::resource('peminjaman', PeminjamanController::class)
     ->only(['index', 'store']);
+Route::patch('/peminjaman/{peminjaman}/kembalikan', [PeminjamanController::class, 'kembalikan'])
+    ->name('peminjaman.kembalikan');

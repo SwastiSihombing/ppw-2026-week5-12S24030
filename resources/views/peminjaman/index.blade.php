@@ -8,6 +8,12 @@
             </div>
         @endif
 
+        @if (session('error'))
+            <div class="alert alert-danger">
+                {{ session('error') }}
+            </div>
+        @endif
+
         @if ($errors->any())
             <div class="alert alert-danger">
                 <ul>
@@ -111,6 +117,7 @@
                     <th>Jatuh Tempo</th>
                     <th>Tanggal Kembali</th>
                     <th>Status</th>
+                    <th>Aksi</th>
                 </tr>
             </thead>
             <tbody>
@@ -128,10 +135,21 @@
                                 : '-' }}
                         </td>
                         <td>{{ ucfirst($peminjaman->status) }}</td>
+                        <td>
+                            @if ($peminjaman->status === 'dipinjam')
+                                <form action="{{ route('peminjaman.kembalikan', $peminjaman) }}" method="POST" style="display:inline">
+                                    @csrf
+                                    @method('PATCH')
+                                    <button type="submit">Kembalikan</button>
+                                </form>
+                            @else
+                                -
+                            @endif
+                        </td>
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="8">Belum ada transaksi peminjaman.</td>
+                        <td colspan="9">Belum ada transaksi peminjaman.</td>
                     </tr>
                 @endforelse
             </tbody>
