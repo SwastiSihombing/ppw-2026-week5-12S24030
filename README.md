@@ -147,6 +147,8 @@ Kontrak dapat dibaca di https://editor.swagger.io dengan menempelkan isi `docs/o
 
 ![Katalog](docs/screenshoots/week9-c-katalog-hateoas.png)
 
+![Meta paginasi](docs/screenshoots/week9-c2-katalog-meta.png)
+
 **(d) POST Buku 201 Created dan header Location**
 
 ![POST buku](docs/screenshoots/week9-d-post-201-location.png)
