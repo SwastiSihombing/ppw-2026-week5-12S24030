@@ -4,6 +4,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BukuController;
 use App\Http\Controllers\KategoriController;
 use App\Http\Controllers\PeminjamanController;
+use App\Http\Controllers\Soap\LibrarySoapController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', fn () => redirect()->route('buku.index'));
@@ -34,3 +35,7 @@ Route::get('/buku', [BukuController::class, 'index'])->name('buku.index');
 Route::get('/buku/{buku}', [BukuController::class, 'show'])->name('buku.show');
 Route::get('/kategori', [KategoriController::class, 'index'])->name('kategori.index');
 Route::get('/kategori/{kategori}', [KategoriController::class, 'show'])->name('kategori.show');
+
+// Layanan SOAP untuk Sistem Administrasi Yudisium (dikecualikan dari CSRF di bootstrap/app.php)
+Route::get('/soap/sipus.wsdl', [LibrarySoapController::class, 'wsdl']);
+Route::post('/soap/sipus', [LibrarySoapController::class, 'handle']);
