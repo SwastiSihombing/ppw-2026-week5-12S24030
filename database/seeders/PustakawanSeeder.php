@@ -62,5 +62,18 @@ class PustakawanSeeder extends Seeder
                 'status' => 'dipinjam',
             ]
         );
+
+        // Buku ber-ISBN nyata (untuk uji referensi eksternal OpenLibrary)
+        Buku::updateOrCreate(
+            ['isbn' => '9780132350884'],
+            [
+                'judul' => 'Clean Code',
+                'penulis' => 'Robert C. Martin',
+                'penerbit' => 'Prentice Hall',
+                'tahun_terbit' => 2008,
+                'stok' => 3,
+                'kategori_id' => $kategori->id,
+            ]
+        );
     }
 }
